@@ -10,7 +10,11 @@ const PORT = process.env.PORT || 5000;
 
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380");
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https:",
+  }),
+);
 app.use(express.json());
 
 //GET JOKES
