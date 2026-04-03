@@ -6,7 +6,7 @@ Users generate AI-curated joke cards, compare options by refreshing, pin their f
 
 ## Live Demo
 
-🔗 Coming soon
+🔗 https://demo-rho-six-79.vercel.app/
 
 ---
 
