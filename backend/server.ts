@@ -30,13 +30,13 @@ app.get("/api/jokes", async (req, res) => {
     const data = (await response.json()) as {
       jokes: Array<{ setup: string; delivery: string }>;
     };
-    console.log("JokeAPI raw response: ", data);
-    console.log("Jokes array: ", data.jokes);
+    // console.log("JokeAPI raw response: ", data);
+    // console.log("Jokes array: ", data.jokes);
     const jokes = data.jokes;
 
     // Store current as previous before setting new
-    await redis.set("jokes:previous", JSON.stringify(jokes));
-    await redis.set("jokes:current", JSON.stringify(jokes), "EX", 3600);
+    await redis.set("jokes:previous", JSON.stringify(jokes), "EX", 86400);
+    await redis.set("jokes:current", JSON.stringify(jokes), "EX", 86400);
 
     return res.json({ jokes, fromCache: false });
   } catch (error) {
@@ -50,7 +50,7 @@ app.get("/api/jokes/refresh", async (req, res) => {
     // Save current as previous before refreshing
     const current = await redis.get("jokes:current");
     if (current) {
-      await redis.set("jokes:previous", current);
+      await redis.set("jokes:previous", current, "EX", 86400);
     }
 
     // Force fresh fetch
@@ -62,7 +62,7 @@ app.get("/api/jokes/refresh", async (req, res) => {
     };
     const jokes = data.jokes;
 
-    await redis.set("jokes:current", JSON.stringify(jokes), "EX", 3600);
+    await redis.set("jokes:current", JSON.stringify(jokes), "EX", 86400);
 
     return res.json({ jokes, fromCache: false });
   } catch (error) {
@@ -81,10 +81,10 @@ app.get("/api/jokes/undo", async (req, res) => {
     //save current as redo before swapping
     const current = await redis.get("jokes:current");
     if (current) {
-      await redis.set("jokes:redo", current);
+      await redis.set("jokes:redo", current, "EX", 86400);
     }
     // Swap previous back to current
-    await redis.set("jokes:current", previous);
+    await redis.set("jokes:current", previous, "EX", 86400);
     await redis.del("jokes:previous");
 
     return res.json({ jokes: JSON.parse(previous), fromCache: true });
@@ -102,12 +102,12 @@ app.get("/api/jokes/redo", async (req, res) => {
     }
     const current = await redis.get("jokes:current");
     if (current) {
-      await redis.set("jokes:redo", current);
-      await redis.set("jokes:previous", current);
+      await redis.set("jokes:redo", current, "EX", 86400);
+      await redis.set("jokes:previous", current, "EX", 86400);
     }
 
     // swap redo to current
-    await redis.set("jokes:current", redo);
+    await redis.set("jokes:current", redo, "EX", 86400);
 
     // Save as current and clear redo
     // await redis.set("jokes:current", redo);

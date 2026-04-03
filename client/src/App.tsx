@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import List from "./List";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -17,7 +18,12 @@ export default function App() {
   const [generated, setGenerated] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [showList, setShowList] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
   useEffect(() => {
+    const saved = localStorage.getItem("jokes:saved");
+    if (saved) setShowList(true);
+
     const stored = localStorage.getItem(JOKES_KEY);
     if (stored) {
       const parsed: Joke[] = JSON.parse(stored);
@@ -41,11 +47,13 @@ export default function App() {
   };
 
   const clearAll = () => {
-    localStorage.clear();
+    localStorage.removeItem(JOKES_KEY);
+    localStorage.removeItem("jokes:saved");
     setJokes([]);
     setGenerated(false);
     setCanUndo(false);
     setCanRedo(false);
+    setShowList(false);
   };
 
   const fetchAndMergePinned = async (stored: Joke[]) => {
@@ -165,7 +173,12 @@ export default function App() {
   };
 
   const flushRedisCache = async () => {
-    await fetch(`${API_URL}/api/jokes/flush`, { method: "DELETE" });
+    try {
+      await fetch(`${API_URL}/api/jokes/flush`, { method: "DELETE" });
+    } catch (error) {
+      console.log("Flush failed: ", error);
+      throw error;
+    }
   };
 
   const togglePin = (index: number) => {
@@ -176,13 +189,33 @@ export default function App() {
       saveLocal(updated);
       const allPinned = updated.every((j) => j.pinned);
       if (allPinned) {
-        flushRedisCache();
         setCanUndo(false);
         setCanRedo(false);
       }
 
       return updated;
     });
+  };
+
+  const saveAndReset = async () => {
+    setLoading(true);
+    const pinned = jokes.filter((j) => j.pinned);
+    localStorage.setItem("jokes:saved", JSON.stringify(pinned));
+    localStorage.removeItem(JOKES_KEY);
+    try {
+      await flushRedisCache();
+    } catch {
+      setLoading(false);
+      alert("Something went wrong. Please try again.");
+      return;
+    }
+    setJokes([]);
+    setGenerated(false);
+    setShowList(true);
+    setConfirmSave(false);
+    setCanUndo(false);
+    setCanRedo(false);
+    setLoading(false);
   };
 
   const hasPinned = jokes.some((j) => j.pinned);
@@ -209,6 +242,36 @@ export default function App() {
             >
               {loading ? "Generating..." : "Generate"}
             </button>
+          ) : jokes.length > 0 && jokes.every((j) => j.pinned) ? (
+            confirmSave ? (
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-yellow-400 text-sm text-center">
+                  ⚠️ Your joke itinerary is final — you won't get these exact
+                  jokes again. Are you sure?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={saveAndReset}
+                    className="bg-purple-700 hover:bg-purple-600 px-6 py-2 rounded-lg font-medium transition"
+                  >
+                    ✅ Confirm
+                  </button>
+                  <button
+                    onClick={() => setConfirmSave(false)}
+                    className="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-lg font-medium transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmSave(true)}
+                className="bg-purple-700 hover:bg-purple-600 px-8 py-3 rounded-lg font-semibold text-lg transition"
+              >
+                📋 Get All Jokes
+              </button>
+            )
           ) : (
             <>
               <button
@@ -236,12 +299,6 @@ export default function App() {
                   Redo ↪
                 </button>
               )}
-              <button
-                onClick={clearAll}
-                className="bg-red-900 hover:bg-red-800 px-6 py-2 rounded-lg font-medium transition"
-              >
-                Clear All
-              </button>
             </>
           )}
         </div>
@@ -290,6 +347,24 @@ export default function App() {
             Pinned cards persist locally — unpinned cards pull from Redis cache
             on refresh
           </p>
+        )}
+
+        {/* ✅ Add here */}
+        {showList && (
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold">📌 Pinned Jokes</h2>
+            </div>
+            <List />
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={clearAll}
+                className="bg-red-900 hover:bg-red-800 px-6 py-2 rounded-lg font-medium transition text-sm"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
