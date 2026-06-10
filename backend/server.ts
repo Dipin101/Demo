@@ -14,6 +14,7 @@ app.use(
   cors({
     origin: [
       "https://demo-rho-six-79.vercel.app",
+      "https://demo-git-master-dipin101s-projects.vercel.app",
       "http://localhost:5173",
       "http://localhost:3000",
     ],
