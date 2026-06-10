@@ -12,7 +12,11 @@ const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380");
 
 app.use(
   cors({
-    origin: "https://demo-rho-six-79.vercel.app",
+    origin: [
+      "https://demo-rho-six-79.vercel.app",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ],
   }),
 );
 app.use(express.json());
